@@ -64,7 +64,6 @@
             background-color: #e5e7eb;
         }
 
-        /* Added spacing for form and room sections */
         .space-y-4 {
             margin-bottom: 2rem;
         }
@@ -73,12 +72,10 @@
             margin-bottom: 1.5rem;
         }
 
-        /* Additional styling for modal */
         #room-modal {
             display: none;
         }
 
-        /* Modal adjustments */
         #room-modal .w-96 {
             padding: 2rem;
         }
@@ -126,34 +123,46 @@
         const roomAudio = document.getElementById('room-audio');
         const closeModalBtn = document.getElementById('close-modal-btn');
 
-        let rooms = [];
-        let currentRoom = null;
+        let socket;
 
-        // Establish WebSocket connection
-        const socket = new WebSocket('ws://192.168.1.211:8080'); // Replace with your server address
+        // Automatically connect to the WebSocket server when the page loads
+        function connectWebSocket() {
+            socket = new WebSocket('ws://192.168.1.211:8080'); // Update with your server's IP or domain
 
-        socket.addEventListener('open', function() {
-            console.log('Connected to WebSocket server');
-        });
+            socket.addEventListener('open', () => {
+                console.log('Connected to WebSocket server');
+            });
 
-        socket.addEventListener('message', function(event) {
-            const data = JSON.parse(event.data);
-            if (data.type === 'new_room') {
-                rooms.push(data.room);
-                displayRooms();
-            } else if (data.type === 'play') {
-                if (currentRoom && data.room === currentRoom.name) {
-                    roomAudio.currentTime = data.currentTime;
-                    roomAudio.play();
-                }
-            } else if (data.type === 'pause') {
-                if (currentRoom && data.room === currentRoom.name) {
-                    roomAudio.pause();
-                }
+            socket.addEventListener('message', (event) => {
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
+            });
+        }
+
+        function handleServerMessage(data) {
+            switch (data.type) {
+                case 'new_room':
+                    addRoomToList(data.room);
+                    break;
+                case 'play':
+                case 'pause':
+                    // Handle play/pause from other clients if needed
+                    if (data.room === modalRoomName.textContent) {
+                        if (data.type === 'play') {
+                            roomAudio.currentTime = data.currentTime || 0;
+                            roomAudio.play();
+                        } else {
+                            roomAudio.pause();
+                        }
+                    }
+                    break;
+                default:
+                    console.log('Unknown message type:', data.type);
+                    break;
             }
-        });
+        }
 
-        createRoomForm.addEventListener('submit', function(event) {
+        createRoomForm.addEventListener('submit', function (event) {
             event.preventDefault();
             const roomName = document.getElementById('room-name').value;
             const audioFile = document.getElementById('audio-file').files[0];
@@ -164,59 +173,43 @@
                 audioURL: audioURL
             };
 
-            // Send the new room to the server
+            // Send new room to the server
             socket.send(JSON.stringify({
                 type: 'new_room',
                 room: room
             }));
 
-            rooms.push(room); // Store locally to avoid re-fetching
-            displayRooms();
-            createRoomForm.reset();
+            // Optionally clear input fields for new room
+            document.getElementById('room-name').value = '';
+            document.getElementById('audio-file').value = '';
         });
 
-        function displayRooms() {
-            roomList.innerHTML = '';
-            rooms.forEach((room, index) => {
-                const li = document.createElement('li');
-                li.className = 'p-2 bg-gray-200 rounded-md cursor-pointer hover:bg-gray-300';
-                li.textContent = room.name;
-                li.addEventListener('click', () => joinRoom(index));
-                roomList.appendChild(li);
-            });
+        function addRoomToList(room) {
+            const li = document.createElement('li');
+            li.className = 'p-2 bg-gray-200 rounded-md cursor-pointer hover:bg-gray-300';
+            li.textContent = room.name;
+            li.addEventListener('click', () => joinRoom(room));
+            roomList.appendChild(li);
         }
 
-        function joinRoom(index) {
-            currentRoom = rooms[index];
-            modalRoomName.textContent = currentRoom.name;
-            roomAudio.src = currentRoom.audioURL;
+        function joinRoom(room) {
+            modalRoomName.textContent = room.name;
+            roomAudio.src = room.audioURL;
             roomModal.classList.remove('hidden');
             roomAudio.play();
+            // Notify the server that the user has joined the room
+            socket.send(JSON.stringify({ type: 'join_room', room: room.name }));
         }
 
-        closeModalBtn.addEventListener('click', function() {
+        closeModalBtn.addEventListener('click', function () {
             roomModal.classList.add('hidden');
             roomAudio.pause();
+            // Notify the server to pause the audio
+            socket.send(JSON.stringify({ type: 'pause', room: modalRoomName.textContent }));
         });
 
-        roomAudio.addEventListener('play', function() {
-            if (currentRoom) {
-                socket.send(JSON.stringify({
-                    type: 'play',
-                    room: currentRoom.name,
-                    currentTime: roomAudio.currentTime
-                }));
-            }
-        });
-
-        roomAudio.addEventListener('pause', function() {
-            if (currentRoom) {
-                socket.send(JSON.stringify({
-                    type: 'pause',
-                    room: currentRoom.name
-                }));
-            }
-        });
+        // Connect to the WebSocket server
+        connectWebSocket();
     </script>
 </body>
 
