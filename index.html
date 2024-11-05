@@ -135,9 +135,10 @@
         let rooms = [];
         let currentRoom = null;
 
-        const socket = new WebSocket('ws://192.168.1.211:8080'); // Updated server URL
+        // Automatically connect to the WebSocket server when the page loads
+        const socket = new WebSocket('ws://192.168.1.211:8080'); // Update with your server URL
 
-        socket.addEventListener('open', function (event) {
+        socket.addEventListener('open', function () {
             console.log('Connected to WebSocket server');
         });
 
@@ -165,8 +166,9 @@
                 audioURL: audioURL
             };
 
-            rooms.push(room);
+            // Send the new room details to the server
             socket.send(JSON.stringify({ type: 'new_room', room: room }));
+            rooms.push(room);
             displayRooms();
             createRoomForm.reset();
         });
