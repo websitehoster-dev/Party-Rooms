@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,10 +70,11 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Party Rooms</h1>
-        
+
         <div class="bg-white p-6 rounded-lg shadow-md mb-8">
             <h2 class="text-2xl font-bold mb-4">Create a Room</h2>
             <form id="create-room-form" class="space-y-4">
@@ -113,7 +115,7 @@
         let rooms = [];
         let currentRoom = null;
 
-        createRoomForm.addEventListener('submit', function(event) {
+        createRoomForm.addEventListener('submit', function (event) {
             event.preventDefault();
             const roomName = document.getElementById('room-name').value;
             const audioFile = document.getElementById('audio-file').files[0];
@@ -148,7 +150,7 @@
             roomAudio.play();
         }
 
-        closeModalBtn.addEventListener('click', function() {
+        closeModalBtn.addEventListener('click', function () {
             roomModal.classList.add('hidden');
             roomAudio.pause();
         });
@@ -170,7 +172,7 @@
             }
         });
 
-        roomAudio.addEventListener('play', function() {
+        roomAudio.addEventListener('play', function () {
             if (currentRoom) {
                 socket.send(JSON.stringify({
                     type: 'play',
@@ -180,7 +182,7 @@
             }
         });
 
-        roomAudio.addEventListener('pause', function() {
+        roomAudio.addEventListener('pause', function () {
             if (currentRoom) {
                 socket.send(JSON.stringify({
                     type: 'pause',
@@ -190,4 +192,5 @@
         });
     </script>
 </body>
+
 </html>
