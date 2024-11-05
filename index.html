@@ -14,14 +14,14 @@
         .container {
             max-width: 1000px;
             margin: 0 auto;
-            padding: 2rem; /* Increased padding */
+            padding: 2rem;
         }
 
         h1 {
-            font-size: 2.5rem; /* Increased font size */
+            font-size: 2.5rem;
             font-weight: bold;
             text-align: center;
-            margin-bottom: 3rem; /* Increased margin-bottom */
+            margin-bottom: 3rem;
         }
 
         .bg-white {
@@ -29,7 +29,7 @@
         }
 
         .p-6 {
-            padding: 2rem; /* Increased padding */
+            padding: 2rem;
         }
 
         .rounded-lg {
@@ -66,11 +66,11 @@
 
         /* Added spacing for form and room sections */
         .space-y-4 {
-            margin-bottom: 2rem; /* Increased margin for form */
+            margin-bottom: 2rem;
         }
 
         .space-y-2 {
-            margin-bottom: 1.5rem; /* Increased margin for room list */
+            margin-bottom: 1.5rem;
         }
 
         /* Additional styling for modal */
@@ -80,7 +80,7 @@
 
         /* Modal adjustments */
         #room-modal .w-96 {
-            padding: 2rem; /* Increased padding inside the modal */
+            padding: 2rem;
         }
     </style>
 </head>
@@ -114,11 +114,7 @@
         <div class="bg-white p-6 rounded-lg shadow-md w-96">
             <h2 class="text-2xl font-bold mb-4" id="modal-room-name">Room Name</h2>
             <audio id="room-audio" class="w-full mb-4" controls></audio>
-            <div class="flex justify-between">
-                <button id="play-btn" class="w-1/2 bg-green-500 text-white p-2 rounded-md hover:bg-green-600">Play</button>
-                <button id="pause-btn" class="w-1/2 bg-red-500 text-white p-2 rounded-md hover:bg-red-600">Pause</button>
-            </div>
-            <button id="close-modal-btn" class="w-full bg-gray-500 text-white p-2 rounded-md hover:bg-gray-600 mt-4">Close</button>
+            <button id="close-modal-btn" class="w-full bg-red-500 text-white p-2 rounded-md hover:bg-red-600 mt-4">Close</button>
         </div>
     </div>
 
@@ -129,33 +125,35 @@
         const modalRoomName = document.getElementById('modal-room-name');
         const roomAudio = document.getElementById('room-audio');
         const closeModalBtn = document.getElementById('close-modal-btn');
-        const playBtn = document.getElementById('play-btn');
-        const pauseBtn = document.getElementById('pause-btn');
 
         let rooms = [];
         let currentRoom = null;
 
-        // Automatically connect to the WebSocket server when the page loads
-        const socket = new WebSocket('ws://192.168.1.211:8080'); // Update with your server URL
+        // Establish WebSocket connection
+        const socket = new WebSocket('ws://192.168.1.211:8080'); // Replace with your server address
 
-        socket.addEventListener('open', function () {
+        socket.addEventListener('open', function() {
             console.log('Connected to WebSocket server');
         });
 
-        socket.addEventListener('message', function (event) {
+        socket.addEventListener('message', function(event) {
             const data = JSON.parse(event.data);
             if (data.type === 'new_room') {
                 rooms.push(data.room);
                 displayRooms();
             } else if (data.type === 'play') {
-                roomAudio.currentTime = data.currentTime;
-                roomAudio.play();
+                if (currentRoom && data.room === currentRoom.name) {
+                    roomAudio.currentTime = data.currentTime;
+                    roomAudio.play();
+                }
             } else if (data.type === 'pause') {
-                roomAudio.pause();
+                if (currentRoom && data.room === currentRoom.name) {
+                    roomAudio.pause();
+                }
             }
         });
 
-        createRoomForm.addEventListener('submit', function (event) {
+        createRoomForm.addEventListener('submit', function(event) {
             event.preventDefault();
             const roomName = document.getElementById('room-name').value;
             const audioFile = document.getElementById('audio-file').files[0];
@@ -166,9 +164,13 @@
                 audioURL: audioURL
             };
 
-            // Send the new room details to the server
-            socket.send(JSON.stringify({ type: 'new_room', room: room }));
-            rooms.push(room);
+            // Send the new room to the server
+            socket.send(JSON.stringify({
+                type: 'new_room',
+                room: room
+            }));
+
+            rooms.push(room); // Store locally to avoid re-fetching
             displayRooms();
             createRoomForm.reset();
         });
@@ -192,12 +194,12 @@
             roomAudio.play();
         }
 
-        closeModalBtn.addEventListener('click', function () {
+        closeModalBtn.addEventListener('click', function() {
             roomModal.classList.add('hidden');
             roomAudio.pause();
         });
 
-        playBtn.addEventListener('click', function () {
+        roomAudio.addEventListener('play', function() {
             if (currentRoom) {
                 socket.send(JSON.stringify({
                     type: 'play',
@@ -207,26 +209,7 @@
             }
         });
 
-        pauseBtn.addEventListener('click', function () {
-            if (currentRoom) {
-                socket.send(JSON.stringify({
-                    type: 'pause',
-                    room: currentRoom.name
-                }));
-            }
-        });
-
-        roomAudio.addEventListener('play', function () {
-            if (currentRoom) {
-                socket.send(JSON.stringify({
-                    type: 'play',
-                    room: currentRoom.name,
-                    currentTime: roomAudio.currentTime
-                }));
-            }
-        });
-
-        roomAudio.addEventListener('pause', function () {
+        roomAudio.addEventListener('pause', function() {
             if (currentRoom) {
                 socket.send(JSON.stringify({
                     type: 'pause',
